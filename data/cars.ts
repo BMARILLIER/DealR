@@ -1,0 +1,73 @@
+import { Car } from "@/lib/types";
+
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split("T")[0];
+}
+
+export const cars: Car[] = [
+  {
+    id: 1,
+    title: "Peugeot 308 GT Line",
+    brand: "Peugeot",
+    model: "308",
+    price: 15500,
+    km: 62000,
+    year: 2020,
+    fuel: "Essence",
+    gearbox: "Manuelle",
+    seller: "Particulier",
+    location: "Paris",
+    trim: "GT Line",
+    equipment: ["GPS", "Radar recul", "CarPlay", "Aide stationnement"],
+    days_online: 45,
+    estimated_market_price: 17000,
+    platform: "leboncoin",
+    url: "https://www.leboncoin.fr/voitures/1",
+    posted_at: daysAgo(45),
+    price_history: [16200, 15800, 15500],
+  },
+  {
+    id: 2,
+    title: "Renault Clio V Intens",
+    brand: "Renault",
+    model: "Clio",
+    price: 18200,
+    km: 85000,
+    year: 2019,
+    fuel: "Diesel",
+    gearbox: "Automatique",
+    seller: "Professionnel",
+    location: "Lyon",
+    trim: "Intens",
+    equipment: ["GPS", "Caméra", "CarPlay"],
+    days_online: 12,
+    estimated_market_price: 16500,
+    platform: "lacentrale",
+    url: "https://www.lacentrale.fr/auto-occasion-annonce-2",
+    posted_at: daysAgo(12),
+    price_history: [18200],
+  },
+  {
+    id: 3,
+    title: "Volkswagen Golf 8 Style",
+    brand: "Volkswagen",
+    model: "Golf",
+    price: 22000,
+    km: 110000,
+    year: 2021,
+    fuel: "Hybride",
+    gearbox: "Automatique",
+    seller: "Particulier",
+    location: "Marseille",
+    trim: "Style",
+    equipment: ["GPS", "Radar recul", "Caméra", "CarPlay", "Aide stationnement"],
+    days_online: 75,
+    estimated_market_price: 24000,
+    platform: "leboncoin",
+    url: "https://www.leboncoin.fr/voitures/3",
+    posted_at: daysAgo(75),
+    price_history: [24500, 23000, 22000],
+  },
+];
