@@ -13,7 +13,7 @@ import Analyzer from "@/components/Analyzer";
 const scoredCars = cars.map(scoreCar);
 
 const DEFAULT_FILTERS: FilterValues = {
-  maxPrice: 0, maxKm: 0, brand: "", model: "",
+  maxPrice: 0, maxKm: 0, brands: [], model: "",
   yearMin: 0, yearMax: 0, fuel: [], gearbox: "",
   seller: "Tous", location: "", radius: 0, equipment: [], sources: [],
 };
@@ -21,6 +21,7 @@ const DEFAULT_FILTERS: FilterValues = {
 export default function Home() {
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
   const [draftFilters, setDraftFilters] = useState<FilterValues>(DEFAULT_FILTERS);
+  const [hasSearched, setHasSearched] = useState(false);
   const [sortBy, setSortBy] = useState("best");
   const [customCars, setCustomCars] = useState<ScoredCar[]>([]);
   const [isPremium, setIsPremium] = useState(false);
@@ -67,9 +68,8 @@ export default function Home() {
     const f = filters;
     if (f.maxPrice > 0 && car.price > f.maxPrice) return false;
     if (f.maxKm > 0 && car.km > f.maxKm) return false;
-    if (f.brand && f.brand !== "__other__" && car.brand !== f.brand) return false;
-    if (f.brand === "__other__" && f.model && !car.title.toLowerCase().includes(f.model.toLowerCase())) return false;
-    if (f.brand && f.brand !== "__other__" && f.model && car.model !== f.model) return false;
+    if (f.brands.length > 0 && !f.brands.includes(car.brand)) return false;
+    if (f.brands.length === 1 && f.model && f.model !== "__other_model__" && car.model !== f.model) return false;
     if (f.yearMin > 0 && car.year < f.yearMin) return false;
     if (f.yearMax > 0 && car.year > f.yearMax) return false;
     if (f.fuel.length > 0 && !f.fuel.includes(car.fuel)) return false;
@@ -207,7 +207,7 @@ export default function Home() {
 
   // Active filters summary
   const summaryParts: string[] = [];
-  if (filters.brand && filters.brand !== "__other__") summaryParts.push(filters.brand + (filters.model ? ` ${filters.model}` : ""));
+  if (filters.brands.length > 0) summaryParts.push(filters.brands.join(", ") + (filters.model && filters.model !== "__other_model__" ? ` ${filters.model}` : ""));
   if (filters.maxPrice > 0) summaryParts.push(`Budget ${filters.maxPrice.toLocaleString("fr-FR")} €`);
   if (filters.maxKm > 0) summaryParts.push(`Max ${filters.maxKm.toLocaleString("fr-FR")} km`);
   if (filters.fuel.length > 0) summaryParts.push(filters.fuel.join(", "));
@@ -245,7 +245,7 @@ export default function Home() {
             Scoring, analyse marché et négociation — en un coup d&apos;oeil.
           </p>
 
-          {filtered.length > 0 && (
+          {hasSearched && filtered.length > 0 && (
             <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-6">
               <div className="animate-[fadeInUp_0.4s_ease-out]">
                 <p className="text-[11px] text-zinc-400 uppercase tracking-widest font-medium">Annonces</p>
@@ -283,7 +283,7 @@ export default function Home() {
       </div>
 
       {/* ─── TOP DEAL BANNER ─── */}
-      {best && (
+      {hasSearched && best && (
         <div className="border-b border-zinc-200/60 bg-emerald-50/40">
           <div className="mx-auto max-w-4xl px-8 py-6 flex items-center justify-between gap-6 animate-[fadeIn_0.5s_ease-out]">
             <div className="flex items-center gap-4">
@@ -306,7 +306,7 @@ export default function Home() {
       )}
 
       {/* ─── TODAY'S OPPORTUNITIES ─── */}
-      {topOpportunities.length > 0 && (
+      {hasSearched && topOpportunities.length > 0 && (
         <div className="border-b border-zinc-200/60">
           <div className="mx-auto max-w-4xl px-8 py-10">
             <div className="flex items-center gap-2 mb-6">
@@ -345,15 +345,15 @@ export default function Home() {
 
       <div className="mx-auto max-w-4xl px-8 py-12">
         {/* ─── FILTERS ─── */}
-        <Filters values={draftFilters} onChange={setDraftFilters} onReset={() => { setDraftFilters(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); }} />
+        <Filters values={draftFilters} onChange={setDraftFilters} onReset={() => { setDraftFilters(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); setHasSearched(false); }} />
         <div className="mt-4 flex items-center gap-3">
           <button
-            onClick={() => setFilters(draftFilters)}
+            onClick={() => { setFilters(draftFilters); setHasSearched(true); }}
             className="rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white tracking-wide transition-all hover:bg-zinc-800 cursor-pointer"
           >
             Rechercher
           </button>
-          {JSON.stringify(draftFilters) !== JSON.stringify(filters) && (
+          {hasSearched && JSON.stringify(draftFilters) !== JSON.stringify(filters) && (
             <span className="text-[11px] text-amber-500 animate-[fadeIn_0.2s_ease-out]">Filtres modifiés — cliquez sur Rechercher</span>
           )}
         </div>
@@ -661,7 +661,7 @@ export default function Home() {
         </div>
 
         {/* ─── BEST CAR ─── */}
-        {best && (
+        {hasSearched && best && (
           <div className="mt-10 animate-[fadeInUp_0.4s_ease-out]">
             {(() => {
               const cheapest = filtered.reduce((a, b) => (a.price <= b.price ? a : b));
@@ -678,7 +678,7 @@ export default function Home() {
         )}
 
         {/* ─── ALL DEALS ─── */}
-        {filtered.length > 1 && (
+        {hasSearched && filtered.length > 1 && (
           <div className="mt-12 mb-6 flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Toutes les annonces</span>
             <div className="flex-1 h-px bg-zinc-200" />
@@ -697,8 +697,9 @@ export default function Home() {
           </div>
         )}
         <div className="flex flex-col gap-5">
-          {filtered.length === 0 && <p className="py-16 text-center text-zinc-400 text-sm">Aucun résultat. Ajustez vos filtres.</p>}
-          {[...filtered].sort((a, b) => {
+          {hasSearched && filtered.length === 0 && <p className="py-16 text-center text-zinc-400 text-sm">Aucun résultat pour cette recherche. Ajustez vos filtres.</p>}
+          {!hasSearched && <p className="py-16 text-center text-zinc-400 text-sm">Renseignez vos critères puis cliquez sur Rechercher.</p>}
+          {hasSearched && [...filtered].sort((a, b) => {
             switch (sortBy) {
               case "best": return b.score - a.score;
               case "negotiable": return b.days_online - a.days_online;

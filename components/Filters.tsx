@@ -29,7 +29,7 @@ function capitalize(s: string): string {
 export interface FilterValues {
   maxPrice: number;
   maxKm: number;
-  brand: string;
+  brands: string[];
   model: string;
   yearMin: number;
   yearMax: number;
@@ -52,24 +52,26 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
   const [customBrand, setCustomBrand] = useState("");
   const [customModel, setCustomModel] = useState("");
 
-  const isOtherBrand = values.brand === "__other__";
-  const activeBrand = isOtherBrand ? customBrand : values.brand;
-  const models = !isOtherBrand && values.brand ? MODELS_BY_BRAND[values.brand] || [] : [];
+  const models = values.brands.length === 1 ? MODELS_BY_BRAND[values.brands[0]] || [] : [];
 
   function set<K extends keyof FilterValues>(key: K, val: FilterValues[K]) {
     onChange({ ...values, [key]: val });
   }
 
-  function handleBrandChange(brand: string) {
-    set("brand", brand);
-    set("model", "");
-    setCustomModel("");
-    if (brand !== "__other__") setCustomBrand("");
+  function toggleBrand(brand: string) {
+    const next = values.brands.includes(brand)
+      ? values.brands.filter((b) => b !== brand)
+      : [...values.brands, brand];
+    set("brands", next);
+    if (next.length !== 1) { set("model", ""); setCustomModel(""); }
   }
 
   function handleCustomBrandBlur() {
     const clean = capitalize(customBrand);
     setCustomBrand(clean);
+    if (clean && !values.brands.includes(clean)) {
+      set("brands", [...values.brands, clean]);
+    }
   }
 
   function toggleFuel(f: string) {
@@ -121,26 +123,51 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
         </div>
       </div>
 
-      {/* Row 2: Brand + Model */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
-          <label className="text-[10px] text-zinc-400 uppercase tracking-widest">Marque</label>
-          <div className="relative">
-            <select
-              value={values.brand}
-              onChange={(e) => handleBrandChange(e.target.value)}
-              className="w-full bg-transparent text-sm text-zinc-900 outline-none cursor-pointer appearance-none pr-6"
-            >
-              <option value="">Toutes les marques</option>
-              {BRANDS.map((b) => <option key={b} value={b}>{b}</option>)}
-              <option value="__other__">Autre</option>
-            </select>
-            <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">▼</span>
-          </div>
+      {/* Row 2: Brand */}
+      <div>
+        <p className="text-[10px] text-zinc-400 uppercase tracking-widest mb-2">Marques</p>
+        <div className="flex flex-wrap gap-2">
+          {BRANDS.map((b) => {
+            const active = values.brands.includes(b);
+            return (
+              <button
+                key={b}
+                onClick={() => toggleBrand(b)}
+                className={`rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide transition-all duration-200 cursor-pointer ${
+                  active
+                    ? "border-zinc-900 bg-zinc-900 text-white"
+                    : "border-zinc-200 bg-white text-zinc-500 shadow-sm hover:border-zinc-300 hover:text-zinc-700"
+                }`}
+              >
+                {b}
+              </button>
+            );
+          })}
         </div>
-        <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="text"
+            value={customBrand}
+            placeholder="Autre marque..."
+            onChange={(e) => setCustomBrand(e.target.value)}
+            onBlur={handleCustomBrandBlur}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCustomBrandBlur(); setCustomBrand(""); } }}
+            className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-900 outline-none placeholder:text-zinc-300 shadow-sm w-40"
+          />
+          {values.brands.filter((b) => !BRANDS.includes(b)).map((b) => (
+            <span key={b} className="inline-flex items-center gap-1 rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1 text-xs font-medium text-white">
+              {b}
+              <button onClick={() => toggleBrand(b)} className="text-zinc-400 hover:text-white cursor-pointer ml-0.5">×</button>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Model (only when 1 brand selected) */}
+      {values.brands.length === 1 && (
+        <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm max-w-xs">
           <label className="text-[10px] text-zinc-400 uppercase tracking-widest">Modèle</label>
-          {isOtherBrand || values.model === "__other_model__" || (values.brand && models.length === 0) ? (
+          {values.model === "__other_model__" || models.length === 0 ? (
             <input
               type="text"
               value={customModel}
@@ -149,7 +176,7 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
               onBlur={() => { const c = capitalize(customModel); setCustomModel(c); set("model", c); }}
               className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-300"
             />
-          ) : models.length > 0 ? (
+          ) : (
             <div className="relative">
               <select
                 value={values.model}
@@ -169,31 +196,7 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
               </select>
               <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">▼</span>
             </div>
-          ) : (
-            <input
-              type="text"
-              value={customModel}
-              placeholder="Entrer le modèle"
-              onChange={(e) => { setCustomModel(e.target.value); set("model", e.target.value.trim()); }}
-              onBlur={() => { const c = capitalize(customModel); setCustomModel(c); set("model", c); }}
-              className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-300"
-            />
           )}
-        </div>
-      </div>
-
-      {/* Custom brand input */}
-      {isOtherBrand && (
-        <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm max-w-xs animate-[fadeIn_0.2s_ease-out]">
-          <label className="text-[10px] text-zinc-400 uppercase tracking-widest">Marque personnalisée</label>
-          <input
-            type="text"
-            value={customBrand}
-            placeholder="Entrer la marque"
-            onChange={(e) => setCustomBrand(e.target.value)}
-            onBlur={handleCustomBrandBlur}
-            className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-300"
-          />
         </div>
       )}
 
