@@ -17,6 +17,7 @@ const MODELS_BY_BRAND: Record<string, string[]> = {
 const FUELS = ["Essence", "Diesel", "Hybride", "Électrique", "GPL"];
 const GEARBOXES = ["Manuelle", "Automatique"];
 const SELLERS = ["Tous", "Particulier", "Professionnel"];
+const SOURCES = ["Leboncoin", "La Centrale", "AutoScout24"] as const;
 const EQUIPMENT_LIST = ["GPS", "Radar recul", "Caméra", "CarPlay", "Aide stationnement"];
 
 function capitalize(s: string): string {
@@ -38,6 +39,7 @@ export interface FilterValues {
   location: string;
   radius: number;
   equipment: string[];
+  sources: string[];
 }
 
 interface FiltersProps {
@@ -74,6 +76,13 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
       ? values.equipment.filter((e) => e !== eq)
       : [...values.equipment, eq];
     set("equipment", next);
+  }
+
+  function toggleSource(src: string) {
+    const next = values.sources.includes(src)
+      ? values.sources.filter((s) => s !== src)
+      : [...values.sources, src];
+    set("sources", next);
   }
 
   return (
@@ -207,6 +216,29 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
       {values.location && values.radius > 0 && (
         <p className="text-xs text-zinc-400">Autour de <span className="text-zinc-600">{values.location}</span> · {values.radius} km</p>
       )}
+
+      {/* Plateforme */}
+      <div>
+        <p className="text-[10px] text-zinc-400 uppercase tracking-widest mb-2">Plateforme</p>
+        <div className="flex flex-wrap gap-2">
+          {SOURCES.map((src) => {
+            const active = values.sources.includes(src);
+            return (
+              <button
+                key={src}
+                onClick={() => toggleSource(src)}
+                className={`rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide transition-all duration-200 cursor-pointer ${
+                  active
+                    ? "border-zinc-900 bg-zinc-900 text-white"
+                    : "border-zinc-200 bg-white text-zinc-500 shadow-sm hover:border-zinc-300 hover:text-zinc-700"
+                }`}
+              >
+                {src}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Row 4: Equipment */}
       <div>

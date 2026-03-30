@@ -5,13 +5,15 @@ import { scoreCar } from "@/lib/score";
 import { Car, ScoredCar } from "@/lib/types";
 
 const MOCK_DATA: Record<string, Partial<Car>> = {
-  leboncoin: { title: "Peugeot 308 Allure", brand: "Peugeot", model: "308", price: 16500, km: 72000, year: 2020, fuel: "Essence", gearbox: "Manuelle", trim: "Allure", platform: "leboncoin", estimated_market_price: 17500 },
-  lacentrale: { title: "Renault Clio Intens", brand: "Renault", model: "Clio", price: 14800, km: 45000, year: 2021, fuel: "Essence", gearbox: "Automatique", trim: "Intens", platform: "lacentrale", estimated_market_price: 15200 },
+  leboncoin: { title: "Peugeot 308 Allure", brand: "Peugeot", model: "308", price: 16500, km: 72000, year: 2020, fuel: "Essence", gearbox: "Manuelle", trim: "Allure", source: "Leboncoin", platform: "leboncoin", estimated_market_price: 17500 },
+  lacentrale: { title: "Renault Clio Intens", brand: "Renault", model: "Clio", price: 14800, km: 45000, year: 2021, fuel: "Essence", gearbox: "Automatique", trim: "Intens", source: "La Centrale", platform: "lacentrale", estimated_market_price: 15200 },
+  autoscout24: { title: "BMW Série 3 Sport", brand: "BMW", model: "Série 3", price: 19900, km: 58000, year: 2020, fuel: "Diesel", gearbox: "Automatique", trim: "Sport", source: "AutoScout24", platform: "autoscout24", estimated_market_price: 21000 },
 };
 
 function detectPlatform(url: string): string {
   if (url.includes("leboncoin")) return "leboncoin";
   if (url.includes("lacentrale")) return "lacentrale";
+  if (url.includes("autoscout24")) return "autoscout24";
   return "leboncoin";
 }
 
@@ -99,6 +101,7 @@ export default function Analyzer({ onResult }: AnalyzerProps) {
       equipment: [],
       days_online: 15,
       estimated_market_price: Math.round(price * 1.05),
+      source: platform === "lacentrale" ? "La Centrale" : platform === "autoscout24" ? "AutoScout24" : "Leboncoin",
       platform,
       url: url.trim(),
       posted_at: daysAgo(15),
@@ -131,7 +134,7 @@ export default function Analyzer({ onResult }: AnalyzerProps) {
             <input
               type="text"
               value={url}
-              placeholder="Coller un lien Leboncoin ou La Centrale"
+              placeholder="Coller un lien Leboncoin, La Centrale ou AutoScout24"
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
               className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400"

@@ -14,6 +14,7 @@ export interface Car {
   equipment: string[];
   days_online: number;
   estimated_market_price: number;
+  source: "Leboncoin" | "La Centrale" | "AutoScout24";
   platform: string;
   url: string;
   posted_at: string;

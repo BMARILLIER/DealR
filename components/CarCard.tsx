@@ -43,9 +43,10 @@ interface CarCardProps {
   isComparing?: boolean;
   onToggleCompare?: (id: number) => void;
   matchPercent?: number;
+  multiPlatform?: boolean;
 }
 
-export default function CarCard({ car, highlight = false, bestCar, isPremium = false, onUnlock, isFavorite = false, onToggleFavorite, isComparing = false, onToggleCompare, matchPercent = 0 }: CarCardProps) {
+export default function CarCard({ car, highlight = false, bestCar, isPremium = false, onUnlock, isFavorite = false, onToggleFavorite, isComparing = false, onToggleCompare, matchPercent = 0, multiPlatform = false }: CarCardProps) {
   const [showCompare, setShowCompare] = useState(false);
   const [copied, setCopied] = useState(false);
   const hasDiscount = car.target_price < car.price;
@@ -71,13 +72,16 @@ export default function CarCard({ car, highlight = false, bestCar, isPremium = f
             {car.title.includes("Peugeot") ? "🦁" : car.title.includes("Renault") ? "◆" : "VW"}
           </span>
         </div>
-        {highlight && (
-          <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 flex items-center gap-1.5">
+          {highlight && (
             <span className="rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white shadow-sm">
               Top Deal
             </span>
-          </div>
-        )}
+          )}
+          <span className="rounded-full bg-zinc-100 border border-zinc-200 px-2.5 py-0.5 text-[10px] font-medium text-zinc-600">
+            {car.source}
+          </span>
+        </div>
         <div className="absolute top-3 right-3">
           <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${deal.bg} ${deal.color}`}>
             {car.score}
@@ -91,11 +95,16 @@ export default function CarCard({ car, highlight = false, bestCar, isPremium = f
           <div>
             <h2 className="text-[17px] font-semibold tracking-tight text-zinc-900">{car.title}</h2>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-zinc-400">
-              <span>{car.year}</span><span>·</span><span>{car.trim}</span><span>·</span><span>{car.platform}</span><span>·</span><span>{car.location}</span>
+              <span>{car.year}</span><span>·</span><span>{car.trim}</span><span>·</span><span>{car.location}</span>
             </div>
           </div>
           <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${nego.bg} ${nego.color}`}>{nego.badge}</span>
         </div>
+
+        {/* Multi-platform */}
+        {multiPlatform && (
+          <p className="mt-2 text-[11px] text-zinc-400">Disponible sur plusieurs plateformes</p>
+        )}
 
         {/* Badges */}
         {badges.length > 0 && (

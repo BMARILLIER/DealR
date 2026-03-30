@@ -15,7 +15,7 @@ const scoredCars = cars.map(scoreCar);
 const DEFAULT_FILTERS: FilterValues = {
   maxPrice: 0, maxKm: 0, brand: "", model: "",
   yearMin: 0, yearMax: 0, fuel: "", gearbox: "",
-  seller: "Tous", location: "", radius: 0, equipment: [],
+  seller: "Tous", location: "", radius: 0, equipment: [], sources: [],
 };
 
 export default function Home() {
@@ -76,6 +76,7 @@ export default function Home() {
     if (f.seller && f.seller !== "Tous" && car.seller !== f.seller) return false;
     if (f.location && f.radius > 0 && !car.location.toLowerCase().includes(f.location.toLowerCase().trim())) return false;
     if (f.equipment.length > 0 && !f.equipment.every((eq) => car.equipment.includes(eq))) return false;
+    if (f.sources.length > 0 && !f.sources.includes(car.source)) return false;
     return true;
   }), [filters]);
 
@@ -94,6 +95,22 @@ export default function Home() {
       return next;
     });
   }, [filtered]);
+
+  // Detect duplicates: same model + km within 5%
+  const duplicateIds = useMemo(() => {
+    const allCars = [...scoredCars, ...customCars];
+    const ids = new Set<number>();
+    for (let i = 0; i < allCars.length; i++) {
+      for (let j = i + 1; j < allCars.length; j++) {
+        const a = allCars[i], b = allCars[j];
+        if (a.brand === b.brand && a.model === b.model && a.source !== b.source) {
+          const kmDiff = Math.abs(a.km - b.km) / Math.max(a.km, b.km, 1);
+          if (kmDiff < 0.05) { ids.add(a.id); ids.add(b.id); }
+        }
+      }
+    }
+    return ids;
+  }, [customCars]);
 
   const best = filtered.length > 0 ? filtered.reduce((a, b) => (a.score >= b.score ? a : b)) : null;
   const totalSavings = filtered.reduce((s, c) => c.target_price < c.price ? s + (c.price - c.target_price) : s, 0);
@@ -200,6 +217,7 @@ export default function Home() {
   if (filters.location && filters.radius > 0) summaryParts.push(`${filters.location} · ${filters.radius} km`);
   else if (filters.location && filters.radius === 0) summaryParts.push(filters.location);
   if (filters.equipment.length > 0) summaryParts.push(filters.equipment.join(", "));
+  if (filters.sources.length > 0) summaryParts.push(filters.sources.join(", "));
 
   const SORT_LABELS: Record<string, string> = {
     best: "Meilleures affaires", negotiable: "Plus négociables",
@@ -352,16 +370,12 @@ export default function Home() {
         )}
 
         {/* Filter summary */}
-        {summaryParts.length > 0 && (
-          <p className="mt-5 text-sm text-zinc-400">
-            <span className="text-zinc-600 font-medium">{filtered.length}</span> résultat{filtered.length !== 1 && "s"} · {summaryParts.join(" • ")} · <span className="text-zinc-500">{SORT_LABELS[sortBy] || SORT_LABELS.best}</span>
-          </p>
-        )}
-        {summaryParts.length === 0 && (
-          <p className="mt-5 text-sm text-zinc-400">
-            <span className="text-zinc-600 font-medium">{filtered.length}</span> résultat{filtered.length !== 1 && "s"} · <span className="text-zinc-500">{SORT_LABELS[sortBy] || SORT_LABELS.best}</span>
-          </p>
-        )}
+        <p className="mt-5 text-sm text-zinc-400">
+          <span className="text-zinc-600 font-medium">{filtered.length}</span> résultat{filtered.length !== 1 && "s"}
+          {summaryParts.length > 0 && <> · {summaryParts.join(" • ")}</>}
+          {filters.sources.length === 0 && <> · toutes plateformes</>}
+          {" "}· <span className="text-zinc-500">{SORT_LABELS[sortBy] || SORT_LABELS.best}</span>
+        </p>
 
         {/* Equipment match hint */}
         {filters.equipment.length > 0 && (
@@ -513,7 +527,7 @@ export default function Home() {
                           {isWatch && <span className="shrink-0 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-amber-600">À surveiller</span>}
                         </div>
                         <p className="mt-1 text-xs text-zinc-400">
-                          {car.price.toLocaleString("fr-FR")} € · {car.km.toLocaleString("fr-FR")} km · {car.platform}
+                          {car.price.toLocaleString("fr-FR")} € · {car.km.toLocaleString("fr-FR")} km · {car.source}
                         </p>
                         <div className="mt-1.5 flex items-center gap-2 text-[11px]">
                           <span className={priceDropped ? "text-emerald-600" : "text-zinc-300"}>{trend}</span>
@@ -565,7 +579,7 @@ export default function Home() {
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-zinc-900 truncate">{car.title}</p>
                         <p className="mt-1 text-xs text-zinc-400">
-                          {car.price.toLocaleString("fr-FR")} € · {car.platform}
+                          {car.price.toLocaleString("fr-FR")} € · {car.source}
                         </p>
                         <p className="mt-0.5 text-[11px] text-zinc-300">Analysé le {dateStr}</p>
                       </div>
@@ -638,7 +652,7 @@ export default function Home() {
               default: return 0;
             }
           }).map((car) => (
-            <CarCard key={car.id} car={car} bestCar={best ?? undefined} isPremium={isPremium} onUnlock={handleUnlock} isFavorite={favoriteIds.includes(car.id)} onToggleFavorite={toggleFavorite} isComparing={compareIds.includes(car.id)} onToggleCompare={toggleCompare} matchPercent={matchPercent(car)} />
+            <CarCard key={car.id} car={car} bestCar={best ?? undefined} isPremium={isPremium} onUnlock={handleUnlock} isFavorite={favoriteIds.includes(car.id)} onToggleFavorite={toggleFavorite} isComparing={compareIds.includes(car.id)} onToggleCompare={toggleCompare} matchPercent={matchPercent(car)} multiPlatform={duplicateIds.has(car.id)} />
           ))}
         </div>
 
