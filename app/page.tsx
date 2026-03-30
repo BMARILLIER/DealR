@@ -14,12 +14,13 @@ const scoredCars = cars.map(scoreCar);
 
 const DEFAULT_FILTERS: FilterValues = {
   maxPrice: 0, maxKm: 0, brand: "", model: "",
-  yearMin: 0, yearMax: 0, fuel: "", gearbox: "",
+  yearMin: 0, yearMax: 0, fuel: [], gearbox: "",
   seller: "Tous", location: "", radius: 0, equipment: [], sources: [],
 };
 
 export default function Home() {
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
+  const [draftFilters, setDraftFilters] = useState<FilterValues>(DEFAULT_FILTERS);
   const [sortBy, setSortBy] = useState("best");
   const [customCars, setCustomCars] = useState<ScoredCar[]>([]);
   const [isPremium, setIsPremium] = useState(false);
@@ -71,7 +72,7 @@ export default function Home() {
     if (f.brand && f.brand !== "__other__" && f.model && car.model !== f.model) return false;
     if (f.yearMin > 0 && car.year < f.yearMin) return false;
     if (f.yearMax > 0 && car.year > f.yearMax) return false;
-    if (f.fuel && car.fuel !== f.fuel) return false;
+    if (f.fuel.length > 0 && !f.fuel.includes(car.fuel)) return false;
     if (f.gearbox && car.gearbox !== f.gearbox) return false;
     if (f.seller && f.seller !== "Tous" && car.seller !== f.seller) return false;
     if (f.location && f.radius > 0 && !car.location.toLowerCase().includes(f.location.toLowerCase().trim())) return false;
@@ -209,7 +210,7 @@ export default function Home() {
   if (filters.brand && filters.brand !== "__other__") summaryParts.push(filters.brand + (filters.model ? ` ${filters.model}` : ""));
   if (filters.maxPrice > 0) summaryParts.push(`Budget ${filters.maxPrice.toLocaleString("fr-FR")} €`);
   if (filters.maxKm > 0) summaryParts.push(`Max ${filters.maxKm.toLocaleString("fr-FR")} km`);
-  if (filters.fuel) summaryParts.push(filters.fuel);
+  if (filters.fuel.length > 0) summaryParts.push(filters.fuel.join(", "));
   if (filters.gearbox) summaryParts.push(filters.gearbox);
   if (filters.yearMin > 0) summaryParts.push(`Après ${filters.yearMin}`);
   if (filters.yearMax > 0) summaryParts.push(`Avant ${filters.yearMax}`);
@@ -344,7 +345,18 @@ export default function Home() {
 
       <div className="mx-auto max-w-4xl px-8 py-12">
         {/* ─── FILTERS ─── */}
-        <Filters values={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} />
+        <Filters values={draftFilters} onChange={setDraftFilters} onReset={() => { setDraftFilters(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); }} />
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            onClick={() => setFilters(draftFilters)}
+            className="rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white tracking-wide transition-all hover:bg-zinc-800 cursor-pointer"
+          >
+            Rechercher
+          </button>
+          {JSON.stringify(draftFilters) !== JSON.stringify(filters) && (
+            <span className="text-[11px] text-amber-500 animate-[fadeIn_0.2s_ease-out]">Filtres modifiés — cliquez sur Rechercher</span>
+          )}
+        </div>
 
         {/* ─── ANALYZER ─── */}
         <div className="mt-8">
@@ -407,40 +419,86 @@ export default function Home() {
         )}
 
         {/* ─── COMPARISON ─── */}
-        {compareCars.length === 2 && (
-          <div className="mt-8 animate-[fadeIn_0.3s_ease-out] rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Face à face</span>
-              <button onClick={() => setCompareIds([])} className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer">Fermer</button>
+        {compareCars.length === 2 && (() => {
+          const [carA, carB] = compareCars;
+          const reasons: string[] = [];
+          if (carA.price < carB.price) reasons.push("moins cher");
+          else if (carB.price < carA.price) reasons.push("moins cher");
+          if (carA.equipment.length > carB.equipment.length) reasons.push("mieux équipé");
+          else if (carB.equipment.length > carA.equipment.length) reasons.push("mieux équipé");
+          if (carA.year > carB.year) reasons.push("plus récent");
+          else if (carB.year > carA.year) reasons.push("plus récent");
+          if (carA.days_online > carB.days_online) reasons.push("plus négociable");
+          else if (carB.days_online > carA.days_online) reasons.push("plus négociable");
+
+          const scoreA = carA.score + (carA.price < carA.market.dealr_market_price ? 5 : 0) + Math.min(carA.equipment.length, 5);
+          const scoreB = carB.score + (carB.price < carB.market.dealr_market_price ? 5 : 0) + Math.min(carB.equipment.length, 5);
+          const winner = scoreA >= scoreB ? carA : carB;
+          const winnerReasons: string[] = [];
+          if (winner.price < (winner === carA ? carB : carA).price) winnerReasons.push("moins cher");
+          if (winner.equipment.length > (winner === carA ? carB : carA).equipment.length) winnerReasons.push("mieux équipé");
+          if (winner.year > (winner === carA ? carB : carA).year) winnerReasons.push("plus récent");
+          if (winner.days_online > (winner === carA ? carB : carA).days_online) winnerReasons.push("plus négociable");
+          const reasonText = winnerReasons.length > 0 ? winnerReasons.join(", ") : "meilleur score global";
+
+          return (
+            <div className="mt-8 animate-[fadeIn_0.3s_ease-out] rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-5">
+                <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400">⚖️ Comparaison</span>
+                <button onClick={() => setCompareIds([])} className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer">Fermer</button>
+              </div>
+              <table className="w-full text-sm border-separate border-spacing-0">
+                <thead>
+                  <tr>
+                    <th className="py-3 text-left text-[10px] text-zinc-400 uppercase tracking-widest font-medium w-24" />
+                    <th className={`py-3 px-4 text-left text-[10px] uppercase tracking-widest font-semibold rounded-tl-xl ${winner === carA ? "bg-emerald-50 text-emerald-600 border-t border-l border-emerald-200" : "text-zinc-500"}`}>
+                      {carA.title}
+                      {winner === carA && <span className="ml-2 text-emerald-500">★</span>}
+                    </th>
+                    <th className={`py-3 px-4 text-right text-[10px] uppercase tracking-widest font-semibold rounded-tr-xl ${winner === carB ? "bg-emerald-50 text-emerald-600 border-t border-r border-emerald-200" : "text-zinc-500"}`}>
+                      {carB.title}
+                      {winner === carB && <span className="ml-2 text-emerald-500">★</span>}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {([
+                    ["Prix", (c: ScoredCar) => c.price, "€", true],
+                    ["Km", (c: ScoredCar) => c.km, "km", true],
+                    ["Année", (c: ScoredCar) => c.year, "", false],
+                    ["Score", (c: ScoredCar) => c.score, "pts", false],
+                    ["Économie", (c: ScoredCar) => Math.max(0, c.price - c.market.negotiated_price), "€", false],
+                  ] as [string, (c: ScoredCar) => number, string, boolean][]).map(([label, fn, unit, lowerIsBetter], i, arr) => {
+                    const a = fn(carA), b = fn(carB);
+                    const aWins = lowerIsBetter ? a < b : a > b;
+                    const bWins = lowerIsBetter ? b < a : b > a;
+                    const isLast = i === arr.length - 1;
+                    return (
+                      <tr key={label}>
+                        <td className="py-3 text-xs text-zinc-400 font-medium">{label}</td>
+                        <td className={`py-3 px-4 font-medium ${winner === carA ? `bg-emerald-50/50 border-l border-emerald-200 ${isLast ? "border-b rounded-bl-xl" : ""}` : ""} ${aWins ? "text-emerald-600" : "text-zinc-500"}`}>
+                          {a.toLocaleString("fr-FR")}{unit && ` ${unit}`}
+                          {aWins && <span className="ml-1.5 text-emerald-400 text-[10px]">✓</span>}
+                        </td>
+                        <td className={`py-3 px-4 text-right font-medium ${winner === carB ? `bg-emerald-50/50 border-r border-emerald-200 ${isLast ? "border-b rounded-br-xl" : ""}` : ""} ${bWins ? "text-emerald-600" : "text-zinc-500"}`}>
+                          {b.toLocaleString("fr-FR")}{unit && ` ${unit}`}
+                          {bWins && <span className="ml-1.5 text-emerald-400 text-[10px]">✓</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="mt-5 pt-4 border-t border-zinc-100">
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-4 text-center">
+                  <p className="text-sm font-semibold text-emerald-700">La meilleure option est {winner.title}</p>
+                  <p className="mt-1 text-xs text-emerald-600/70">Car {reasonText}</p>
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-4 text-sm">
-              <p className="font-medium text-zinc-900 truncate">{compareCars[0].title}</p>
-              <span />
-              <p className="font-medium text-zinc-900 truncate text-right">{compareCars[1].title}</p>
-              {([
-                ["Prix", (c: ScoredCar) => c.price, "€"],
-                ["Km", (c: ScoredCar) => c.km, "km"],
-                ["Score", (c: ScoredCar) => c.score, "pts"],
-                ["Économie", (c: ScoredCar) => Math.max(0, c.price - c.market.negotiated_price), "€"],
-              ] as [string, (c: ScoredCar) => number, string][]).map(([label, fn, unit]) => {
-                const a = fn(compareCars[0]), b = fn(compareCars[1]);
-                const low = label !== "Score" && label !== "Économie";
-                const aW = low ? a < b : a > b, bW = low ? b < a : b > a;
-                return (
-                  <React.Fragment key={label}>
-                    <p className={aW ? "text-emerald-600 font-medium" : "text-zinc-400"}>{a.toLocaleString("fr-FR")} {unit}</p>
-                    <p className="text-zinc-300 text-center text-xs self-center">{label}</p>
-                    <p className={`text-right ${bW ? "text-emerald-600 font-medium" : "text-zinc-400"}`}>{b.toLocaleString("fr-FR")} {unit}</p>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-            <div className="mt-5 pt-4 border-t border-zinc-100 text-center">
-              <p className="text-xs text-zinc-400">Meilleure option : <span className="text-emerald-600 font-medium">{compareCars[0].score >= compareCars[1].score ? compareCars[0].title : compareCars[1].title}</span></p>
-            </div>
-          </div>
-        )}
-        {compareIds.length === 1 && <p className="mt-6 text-xs text-zinc-400 animate-[fadeIn_0.2s_ease-out]">Sélectionnez une deuxième voiture.</p>}
+          );
+        })()}
+        {compareIds.length === 1 && <p className="mt-6 text-xs text-zinc-400 animate-[fadeIn_0.2s_ease-out]">Sélectionnez une deuxième voiture pour comparer.</p>}
 
         {/* ─── ALERTS ─── */}
         <div className="mt-10">

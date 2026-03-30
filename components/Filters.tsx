@@ -33,7 +33,7 @@ export interface FilterValues {
   model: string;
   yearMin: number;
   yearMax: number;
-  fuel: string;
+  fuel: string[];
   gearbox: string;
   seller: string;
   location: string;
@@ -63,12 +63,20 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
   function handleBrandChange(brand: string) {
     set("brand", brand);
     set("model", "");
+    setCustomModel("");
     if (brand !== "__other__") setCustomBrand("");
   }
 
   function handleCustomBrandBlur() {
     const clean = capitalize(customBrand);
     setCustomBrand(clean);
+  }
+
+  function toggleFuel(f: string) {
+    const next = values.fuel.includes(f)
+      ? values.fuel.filter((x) => x !== f)
+      : [...values.fuel, f];
+    set("fuel", next);
   }
 
   function toggleEquipment(eq: string) {
@@ -117,19 +125,22 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
           <label className="text-[10px] text-zinc-400 uppercase tracking-widest">Marque</label>
-          <select
-            value={values.brand}
-            onChange={(e) => handleBrandChange(e.target.value)}
-            className="w-full bg-transparent text-sm text-zinc-900 outline-none cursor-pointer appearance-none"
-          >
-            <option value="">Toutes les marques</option>
-            {BRANDS.map((b) => <option key={b} value={b}>{b}</option>)}
-            <option value="__other__">Autre</option>
-          </select>
+          <div className="relative">
+            <select
+              value={values.brand}
+              onChange={(e) => handleBrandChange(e.target.value)}
+              className="w-full bg-transparent text-sm text-zinc-900 outline-none cursor-pointer appearance-none pr-6"
+            >
+              <option value="">Toutes les marques</option>
+              {BRANDS.map((b) => <option key={b} value={b}>{b}</option>)}
+              <option value="__other__">Autre</option>
+            </select>
+            <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">▼</span>
+          </div>
         </div>
         <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
           <label className="text-[10px] text-zinc-400 uppercase tracking-widest">Modèle</label>
-          {isOtherBrand ? (
+          {isOtherBrand || values.model === "__other_model__" || (values.brand && models.length === 0) ? (
             <input
               type="text"
               value={customModel}
@@ -139,12 +150,34 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
               className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-300"
             />
           ) : models.length > 0 ? (
-            <select value={values.model} onChange={(e) => set("model", e.target.value)} className="w-full bg-transparent text-sm text-zinc-900 outline-none cursor-pointer appearance-none">
-              <option value="">Tous les modèles</option>
-              {models.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <div className="relative">
+              <select
+                value={values.model}
+                onChange={(e) => {
+                  if (e.target.value === "__other_model__") {
+                    set("model", "__other_model__");
+                    setCustomModel("");
+                  } else {
+                    set("model", e.target.value);
+                  }
+                }}
+                className="w-full bg-transparent text-sm text-zinc-900 outline-none cursor-pointer appearance-none pr-6"
+              >
+                <option value="">Tous les modèles</option>
+                {models.map((m) => <option key={m} value={m}>{m}</option>)}
+                <option value="__other_model__">Autre</option>
+              </select>
+              <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">▼</span>
+            </div>
           ) : (
-            <span className="text-sm text-zinc-300">Choisir une marque</span>
+            <input
+              type="text"
+              value={customModel}
+              placeholder="Entrer le modèle"
+              onChange={(e) => { setCustomModel(e.target.value); set("model", e.target.value.trim()); }}
+              onBlur={() => { const c = capitalize(customModel); setCustomModel(c); set("model", c); }}
+              className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-300"
+            />
           )}
         </div>
       </div>
@@ -166,12 +199,26 @@ export default function Filters({ values, onChange, onReset }: FiltersProps) {
 
       {/* Row 3: Fuel + Gearbox + Seller */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm col-span-2 sm:col-span-1">
           <label className="text-[10px] text-zinc-400 uppercase tracking-widest">Carburant</label>
-          <select value={values.fuel} onChange={(e) => set("fuel", e.target.value)} className="w-full bg-transparent text-sm text-zinc-900 outline-none cursor-pointer appearance-none">
-            <option value="">Tous</option>
-            {FUELS.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {FUELS.map((f) => {
+              const active = values.fuel.includes(f);
+              return (
+                <button
+                  key={f}
+                  onClick={() => toggleFuel(f)}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all duration-200 cursor-pointer ${
+                    active
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:text-zinc-700"
+                  }`}
+                >
+                  {f}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
           <label className="text-[10px] text-zinc-400 uppercase tracking-widest">Boîte</label>
