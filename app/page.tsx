@@ -1,16 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { cars } from "@/data/cars";
 import { scoreCar } from "@/lib/score";
-import { ScoredCar } from "@/lib/types";
+import { Car, ScoredCar } from "@/lib/types";
 import CarCard from "@/components/CarCard";
 import Filters, { FilterValues } from "@/components/Filters";
 import Header from "@/components/Header";
 import PremiumModal from "@/components/PremiumModal";
 import Analyzer from "@/components/Analyzer";
-
-const scoredCars = cars.map(scoreCar);
 
 const DEFAULT_FILTERS: FilterValues = {
   maxPrice: 0, maxKm: 0, brands: [], model: "",
@@ -22,6 +19,9 @@ export default function Home() {
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
   const [draftFilters, setDraftFilters] = useState<FilterValues>(DEFAULT_FILTERS);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<ScoredCar[]>([]);
+  const [sourceStatus, setSourceStatus] = useState<{ source: string; count: number; error?: string }[]>([]);
   const [sortBy, setSortBy] = useState("best");
   const [customCars, setCustomCars] = useState<ScoredCar[]>([]);
   const [isPremium, setIsPremium] = useState(false);
@@ -64,22 +64,44 @@ export default function Home() {
     });
   }, []);
 
-  const filtered = useMemo(() => scoredCars.filter((car) => {
-    const f = filters;
-    if (f.maxPrice > 0 && car.price > f.maxPrice) return false;
-    if (f.maxKm > 0 && car.km > f.maxKm) return false;
-    if (f.brands.length > 0 && !f.brands.includes(car.brand)) return false;
-    if (f.brands.length === 1 && f.model && f.model !== "__other_model__" && car.model !== f.model) return false;
-    if (f.yearMin > 0 && car.year < f.yearMin) return false;
-    if (f.yearMax > 0 && car.year > f.yearMax) return false;
-    if (f.fuel.length > 0 && !f.fuel.includes(car.fuel)) return false;
-    if (f.gearbox && car.gearbox !== f.gearbox) return false;
-    if (f.seller && f.seller !== "Tous" && car.seller !== f.seller) return false;
-    if (f.location && f.radius > 0 && !car.location.toLowerCase().includes(f.location.toLowerCase().trim())) return false;
-    if (f.equipment.length > 0 && !f.equipment.every((eq) => car.equipment.includes(eq))) return false;
-    if (f.sources.length > 0 && !f.sources.includes(car.source)) return false;
-    return true;
-  }), [filters]);
+  const filtered = searchResults;
+
+  const doSearch = useCallback(async (searchFilters: FilterValues) => {
+    setIsLoading(true);
+    setHasSearched(true);
+    setFilters(searchFilters);
+    try {
+      const res = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brands: searchFilters.brands,
+          model: searchFilters.model,
+          maxPrice: searchFilters.maxPrice,
+          maxKm: searchFilters.maxKm,
+          fuel: searchFilters.fuel,
+          gearbox: searchFilters.gearbox,
+          yearMin: searchFilters.yearMin,
+          yearMax: searchFilters.yearMax,
+          location: searchFilters.location,
+          radius: searchFilters.radius,
+          seller: searchFilters.seller,
+          sources: searchFilters.sources,
+        }),
+      });
+      const data = await res.json();
+      const cars: Car[] = data.cars ?? [];
+      const scored = cars.filter((c: Car) => c.price > 0).map(scoreCar);
+      setSearchResults(scored);
+      setSourceStatus(data.sources ?? []);
+    } catch (err) {
+      console.error("Search error:", err);
+      setSearchResults([]);
+      setSourceStatus([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // Track analyzed cars (most recent first, max 20, no duplicates)
   useEffect(() => {
@@ -99,7 +121,7 @@ export default function Home() {
 
   // Detect duplicates: same model + km within 5%
   const duplicateIds = useMemo(() => {
-    const allCars = [...scoredCars, ...customCars];
+    const allCars = [...searchResults, ...customCars];
     const ids = new Set<number>();
     for (let i = 0; i < allCars.length; i++) {
       for (let j = i + 1; j < allCars.length; j++) {
@@ -116,10 +138,10 @@ export default function Home() {
   const best = filtered.length > 0 ? filtered.reduce((a, b) => (a.score >= b.score ? a : b)) : null;
   const totalSavings = filtered.reduce((s, c) => c.target_price < c.price ? s + (c.price - c.target_price) : s, 0);
   const topOpportunities = [...filtered].sort((a, b) => (b.score + (b.price - b.target_price) * 0.01) - (a.score + (a.price - a.target_price) * 0.01)).slice(0, 3);
-  const favorites = scoredCars.filter((c) => favoriteIds.includes(c.id));
+  const favorites = searchResults.filter((c) => favoriteIds.includes(c.id));
   const analyzed = analyzedEntries
     .map((e) => {
-      const car = scoredCars.find((c) => c.id === e.id);
+      const car = searchResults.find((c) => c.id === e.id);
       return car ? { ...car, analyzedAt: e.date } : null;
     })
     .filter((c): c is ScoredCar & { analyzedAt: string } => c !== null);
@@ -179,13 +201,13 @@ export default function Home() {
     setAnalyzedEntries([]);
     try { localStorage.removeItem("dealr-analyzed-v2"); } catch { /* ignore */ }
   }
-  const compareCars = compareIds.map((id) => scoredCars.find((c) => c.id === id)).filter((c): c is ScoredCar => c !== undefined);
+  const compareCars = compareIds.map((id) => searchResults.find((c) => c.id === id)).filter((c): c is ScoredCar => c !== undefined);
   const dealsAboveMarket = filtered.filter((c) => c.market.gap > 0).length;
 
   // Recommendation: best across ALL cars (even outside filters)
   const recommendation = useMemo(() => {
     if (filters.equipment.length === 0) return null;
-    const ranked = scoredCars
+    const ranked = searchResults
       .map((car) => {
         const eqMatch = filters.equipment.filter((eq) => car.equipment.includes(eq)).length;
         const eqScore = filters.equipment.length > 0 ? eqMatch / filters.equipment.length : 0;
@@ -345,18 +367,36 @@ export default function Home() {
 
       <div className="mx-auto max-w-4xl px-8 py-12">
         {/* ─── FILTERS ─── */}
-        <Filters values={draftFilters} onChange={setDraftFilters} onReset={() => { setDraftFilters(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); setHasSearched(false); }} />
+        <Filters values={draftFilters} onChange={setDraftFilters} onReset={() => { setDraftFilters(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); setHasSearched(false); setSearchResults([]); setSourceStatus([]); }} />
         <div className="mt-4 flex items-center gap-3">
           <button
-            onClick={() => { setFilters(draftFilters); setHasSearched(true); }}
-            className="rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white tracking-wide transition-all hover:bg-zinc-800 cursor-pointer"
+            onClick={() => doSearch(draftFilters)}
+            disabled={isLoading}
+            className={`rounded-xl px-6 py-3 text-sm font-semibold text-white tracking-wide transition-all cursor-pointer ${
+              isLoading ? "bg-zinc-400" : "bg-zinc-900 hover:bg-zinc-800"
+            }`}
           >
-            Rechercher
+            {isLoading ? "Recherche en cours..." : "Rechercher"}
           </button>
-          {hasSearched && JSON.stringify(draftFilters) !== JSON.stringify(filters) && (
+          {hasSearched && !isLoading && JSON.stringify(draftFilters) !== JSON.stringify(filters) && (
             <span className="text-[11px] text-amber-500 animate-[fadeIn_0.2s_ease-out]">Filtres modifiés — cliquez sur Rechercher</span>
           )}
         </div>
+        {hasSearched && !isLoading && sourceStatus.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {sourceStatus.map((s) => (
+              <span key={s.source} className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${
+                s.count > 0
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                  : s.error
+                    ? "border-red-200 bg-red-50 text-red-500"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-400"
+              }`}>
+                {s.source}: {s.count > 0 ? `${s.count} annonces` : s.error ? "erreur" : "0 résultat"}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* ─── ANALYZER ─── */}
         <div className="mt-8">
@@ -697,8 +737,9 @@ export default function Home() {
           </div>
         )}
         <div className="flex flex-col gap-5">
-          {hasSearched && filtered.length === 0 && <p className="py-16 text-center text-zinc-400 text-sm">Aucun résultat pour cette recherche. Ajustez vos filtres.</p>}
-          {!hasSearched && <p className="py-16 text-center text-zinc-400 text-sm">Renseignez vos critères puis cliquez sur Rechercher.</p>}
+          {isLoading && <p className="py-16 text-center text-zinc-500 text-sm animate-pulse">Recherche sur Leboncoin, La Centrale, AutoScout24...</p>}
+          {hasSearched && !isLoading && filtered.length === 0 && <p className="py-16 text-center text-zinc-400 text-sm">Aucun résultat pour cette recherche. Ajustez vos filtres.</p>}
+          {!hasSearched && !isLoading && <p className="py-16 text-center text-zinc-400 text-sm">Renseignez vos critères puis cliquez sur Rechercher.</p>}
           {hasSearched && [...filtered].sort((a, b) => {
             switch (sortBy) {
               case "best": return b.score - a.score;
