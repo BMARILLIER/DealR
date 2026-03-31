@@ -44,9 +44,11 @@ interface CarCardProps {
   onToggleCompare?: (id: number) => void;
   matchPercent?: number;
   multiPlatform?: boolean;
+  priceBelowAvg?: number;
+  priceGap?: { cheapestSource: string; gap: number; cheapestPrice: number };
 }
 
-export default function CarCard({ car, highlight = false, bestCar, isPremium = false, onUnlock, isFavorite = false, onToggleFavorite, isComparing = false, onToggleCompare, matchPercent = 0, multiPlatform = false }: CarCardProps) {
+export default function CarCard({ car, highlight = false, bestCar, isPremium = false, onUnlock, isFavorite = false, onToggleFavorite, isComparing = false, onToggleCompare, matchPercent = 0, multiPlatform = false, priceBelowAvg = 0, priceGap }: CarCardProps) {
   const [showCompare, setShowCompare] = useState(false);
   const [copied, setCopied] = useState(false);
   const hasDiscount = car.target_price < car.price;
@@ -112,6 +114,25 @@ export default function CarCard({ car, highlight = false, bestCar, isPremium = f
         {badges.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {badges.map((b) => <span key={b.text} className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${b.cls}`}>{b.text}</span>)}
+          </div>
+        )}
+
+        {/* Price comparison across platforms */}
+        {priceBelowAvg > 0 && (
+          <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5">
+            <p className="text-[11px] text-emerald-700 font-medium">
+              Prix {priceBelowAvg.toLocaleString("fr-FR")} € plus bas que la moyenne des plateformes
+            </p>
+          </div>
+        )}
+        {priceGap && (
+          <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5">
+            <p className="text-[11px] text-amber-700 font-medium">
+              Écart de prix entre plateformes : {priceGap.gap.toLocaleString("fr-FR")} €
+            </p>
+            <p className="text-[10px] text-amber-600 mt-0.5">
+              Meilleure offre sur {priceGap.cheapestSource} à {priceGap.cheapestPrice.toLocaleString("fr-FR")} €
+            </p>
           </div>
         )}
 

@@ -135,6 +135,49 @@ export default function Home() {
     return ids;
   }, [customCars]);
 
+  // Average price per source
+  const avgPriceBySource = useMemo(() => {
+    const map: Record<string, { total: number; count: number }> = {};
+    for (const c of filtered) {
+      if (!map[c.source]) map[c.source] = { total: 0, count: 0 };
+      map[c.source].total += c.price;
+      map[c.source].count += 1;
+    }
+    const avg: Record<string, number> = {};
+    for (const [src, v] of Object.entries(map)) {
+      avg[src] = Math.round(v.total / v.count);
+    }
+    return avg;
+  }, [filtered]);
+
+  const avgPriceAll = filtered.length > 0 ? Math.round(filtered.reduce((s, c) => s + c.price, 0) / filtered.length) : 0;
+
+  // Cross-platform price gap for similar models
+  const priceGapMap = useMemo(() => {
+    const gaps = new Map<number, { cheapestSource: string; gap: number; cheapestPrice: number }>();
+    const allCars = filtered;
+    for (let i = 0; i < allCars.length; i++) {
+      for (let j = i + 1; j < allCars.length; j++) {
+        const a = allCars[i], b = allCars[j];
+        if (a.brand === b.brand && a.model === b.model && a.source !== b.source) {
+          const kmDiff = Math.abs(a.km - b.km) / Math.max(a.km, b.km, 1);
+          if (kmDiff < 0.15) {
+            const gap = Math.abs(a.price - b.price);
+            if (gap > 0) {
+              const cheaper = a.price < b.price ? a : b;
+              const pricier = a.price < b.price ? b : a;
+              const existing = gaps.get(pricier.id);
+              if (!existing || gap > existing.gap) {
+                gaps.set(pricier.id, { cheapestSource: cheaper.source, gap, cheapestPrice: cheaper.price });
+              }
+            }
+          }
+        }
+      }
+    }
+    return gaps;
+  }, [filtered]);
+
   const best = filtered.length > 0 ? filtered.reduce((a, b) => (a.score >= b.score ? a : b)) : null;
   const totalSavings = filtered.reduce((s, c) => c.target_price < c.price ? s + (c.price - c.target_price) : s, 0);
   const topOpportunities = [...filtered].sort((a, b) => (b.score + (b.price - b.target_price) * 0.01) - (a.score + (a.price - a.target_price) * 0.01)).slice(0, 3);
@@ -752,7 +795,7 @@ export default function Home() {
               default: return 0;
             }
           }).map((car) => (
-            <CarCard key={car.id} car={car} bestCar={best ?? undefined} isPremium={isPremium} onUnlock={handleUnlock} isFavorite={favoriteIds.includes(car.id)} onToggleFavorite={toggleFavorite} isComparing={compareIds.includes(car.id)} onToggleCompare={toggleCompare} matchPercent={matchPercent(car)} multiPlatform={duplicateIds.has(car.id)} />
+            <CarCard key={car.id} car={car} bestCar={best ?? undefined} isPremium={isPremium} onUnlock={handleUnlock} isFavorite={favoriteIds.includes(car.id)} onToggleFavorite={toggleFavorite} isComparing={compareIds.includes(car.id)} onToggleCompare={toggleCompare} matchPercent={matchPercent(car)} multiPlatform={duplicateIds.has(car.id)} priceBelowAvg={car.price < avgPriceAll ? avgPriceAll - car.price : 0} priceGap={priceGapMap.get(car.id)} />
           ))}
         </div>
 
