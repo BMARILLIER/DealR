@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const params: SearchParams = await request.json();
 
     // Determine which sources to query
-    const sources = params.sources.length > 0 ? params.sources : ["Leboncoin", "La Centrale", "AutoScout24"];
+    const sources = params.sources.length > 0 ? params.sources : ["Leboncoin", "AutoScout24"];
 
     // Query all sources in parallel
     const promises: Promise<{ source: string; cars: unknown[]; error?: string }>[] = [];

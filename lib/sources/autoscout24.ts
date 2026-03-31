@@ -46,10 +46,16 @@ export async function searchAutoScout24(
   params: SearchParams
 ): Promise<Car[]> {
   try {
+    // Normalize brand name for lookup (case-insensitive)
+    function findSlug(brand: string): string {
+      const key = Object.keys(BRAND_SLUGS).find((k) => k.toLowerCase() === brand.toLowerCase());
+      return key ? BRAND_SLUGS[key] : brand.toLowerCase();
+    }
+
     // Build URL path with brand slug
     const brandSlug =
       params.brands.length === 1
-        ? BRAND_SLUGS[params.brands[0]] ?? params.brands[0].toLowerCase()
+        ? findSlug(params.brands[0])
         : "";
 
     const queryParts: string[] = [
@@ -65,7 +71,7 @@ export async function searchAutoScout24(
     // Multiple brands via mmvmk query param
     if (params.brands.length > 1) {
       const slugs = params.brands
-        .map((b) => BRAND_SLUGS[b] ?? b.toLowerCase())
+        .map((b) => findSlug(b))
         .filter(Boolean);
       queryParts.push(`mmvmk0=${slugs[0]}`);
       if (slugs[1]) queryParts.push(`mmvmk1=${slugs[1]}`);

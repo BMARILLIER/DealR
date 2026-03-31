@@ -322,8 +322,15 @@ export default function Home() {
                   value={draftFilters.brands[0] ?? ""}
                   placeholder="BMW, Audi..."
                   onChange={(e) => {
-                    const val = e.target.value.trim();
+                    const val = e.target.value;
                     setDraftFilters((prev) => ({ ...prev, brands: val ? [val] : [] }));
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value.trim();
+                    if (val) {
+                      const capitalized = val.charAt(0).toUpperCase() + val.slice(1);
+                      setDraftFilters((prev) => ({ ...prev, brands: [capitalized] }));
+                    }
                   }}
                   className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400 focus:bg-white transition-all"
                 />
@@ -334,7 +341,7 @@ export default function Home() {
                   type="text"
                   value={draftFilters.model === "__other_model__" ? "" : draftFilters.model}
                   placeholder="Série 3, Golf..."
-                  onChange={(e) => setDraftFilters((prev) => ({ ...prev, model: e.target.value.trim() }))}
+                  onChange={(e) => setDraftFilters((prev) => ({ ...prev, model: e.target.value }))}
                   className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400 focus:bg-white transition-all"
                 />
               </div>

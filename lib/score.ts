@@ -91,7 +91,7 @@ function computeMarketPrice(car: Car): MarketPrice {
 function computePublication(car: Car): PublicationInfo {
   const posted = new Date(car.posted_at);
   const now = new Date();
-  const diffMs = now.getTime() - posted.getTime();
+  const diffMs = isNaN(posted.getTime()) ? 0 : now.getTime() - posted.getTime();
   const days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 
   const posted_date = posted.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
