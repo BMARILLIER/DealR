@@ -64,14 +64,16 @@ export default function CarCard({ car, highlight = false, bestCar, isPremium = f
     }`}>
 
       {/* Photo area */}
-      <div className={`relative h-28 rounded-t-2xl overflow-hidden ${
+      <div className={`relative h-36 rounded-t-2xl overflow-hidden ${
         highlight ? "bg-gradient-to-br from-emerald-50 to-white" : "bg-gradient-to-br from-zinc-50 to-white"
       }`}>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-3xl opacity-20">
-            {car.title.includes("Peugeot") ? "🦁" : car.title.includes("Renault") ? "◆" : "VW"}
-          </span>
-        </div>
+        {car.image ? (
+          <img src={car.image} alt={car.title} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-3xl opacity-20">{car.brand?.[0] ?? "?"}</span>
+          </div>
+        )}
         <div className="absolute top-3 left-3 flex items-center gap-1.5">
           {highlight && (
             <span className="rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white shadow-sm">

@@ -19,6 +19,7 @@ export interface Car {
   url: string;
   posted_at: string;
   price_history: number[];
+  image?: string;
 }
 
 export interface BuyDecision {
