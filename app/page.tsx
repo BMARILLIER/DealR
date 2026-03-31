@@ -22,6 +22,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<ScoredCar[]>([]);
   const [sourceStatus, setSourceStatus] = useState<{ source: string; count: number; error?: string }[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [sortBy, setSortBy] = useState("best");
   const [customCars, setCustomCars] = useState<ScoredCar[]>([]);
   const [isPremium, setIsPremium] = useState(false);
@@ -297,147 +298,235 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-50">
       <Header />
 
-      {/* ─── HERO ─── */}
-      <div className="border-b border-zinc-200/60 bg-gradient-to-b from-white to-zinc-50/80">
-        <div className="mx-auto max-w-4xl px-8 pt-24 pb-20">
+      {/* ─── HERO + SMART SEARCH ─── */}
+      <div className="border-b border-zinc-200/60 bg-gradient-to-b from-white via-white to-zinc-50/80">
+        <div className="mx-auto max-w-4xl px-8 pt-24 pb-16">
           <h2 className="text-[clamp(4rem,12vw,8rem)] font-black tracking-[-0.06em] leading-[0.85] text-zinc-900">
             DEAL<span className="text-emerald-600">R</span>
           </h2>
           <p className="mt-6 text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900/70">
             Trouvez la bonne affaire. Payez le juste prix.
           </p>
-          <p className="mt-2 text-base text-zinc-400 font-light tracking-wide">
-            Scoring, analyse marché et négociation — en un coup d&apos;oeil.
-          </p>
 
-          {hasSearched && filtered.length > 0 && (
-            <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-6">
-              <div className="animate-[fadeInUp_0.4s_ease-out]">
-                <p className="text-[11px] text-zinc-400 uppercase tracking-widest font-medium">Annonces</p>
-                <p className="mt-1.5 text-4xl font-black text-zinc-900 tracking-tight">{filtered.length}</p>
+          {/* ─── SMART SEARCH ─── */}
+          <div className="mt-12 rounded-2xl border border-zinc-200 bg-white p-8 shadow-lg shadow-zinc-200/50">
+            <div className="flex items-center gap-2 mb-6">
+              <span className="text-lg">&#x2728;</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Recherche intelligente</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">Marque</label>
+                <input
+                  type="text"
+                  value={draftFilters.brands[0] ?? ""}
+                  placeholder="BMW, Audi..."
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    setDraftFilters((prev) => ({ ...prev, brands: val ? [val] : [] }));
+                  }}
+                  className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400 focus:bg-white transition-all"
+                />
               </div>
-              {best && (
-                <div className="animate-[fadeInUp_0.5s_ease-out]">
-                  <p className="text-[11px] text-zinc-400 uppercase tracking-widest font-medium">Meilleur score</p>
-                  <p className="mt-1.5 text-4xl font-black text-emerald-600 tracking-tight">{best.score}</p>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">Modèle</label>
+                <input
+                  type="text"
+                  value={draftFilters.model === "__other_model__" ? "" : draftFilters.model}
+                  placeholder="Série 3, Golf..."
+                  onChange={(e) => setDraftFilters((prev) => ({ ...prev, model: e.target.value.trim() }))}
+                  className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400 focus:bg-white transition-all"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">Budget max</label>
+                <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 focus-within:border-zinc-400 focus-within:bg-white transition-all">
+                  <input
+                    type="number"
+                    value={draftFilters.maxPrice || ""}
+                    placeholder="15 000"
+                    onChange={(e) => setDraftFilters((prev) => ({ ...prev, maxPrice: Number(e.target.value) }))}
+                    className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-zinc-300 ml-1">€</span>
                 </div>
-              )}
-              {totalSavings > 0 && (
-                <div className="animate-[fadeInUp_0.6s_ease-out]">
-                  <p className="text-[11px] text-zinc-400 uppercase tracking-widest font-medium">Économie totale</p>
-                  <p className={`mt-1.5 text-4xl font-black tracking-tight ${isPremium ? "text-emerald-600" : "text-emerald-600 blur-lg select-none"}`}>
-                    {totalSavings.toLocaleString("fr-FR")} €
-                  </p>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">Km max</label>
+                <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 focus-within:border-zinc-400 focus-within:bg-white transition-all">
+                  <input
+                    type="number"
+                    value={draftFilters.maxKm || ""}
+                    placeholder="150 000"
+                    onChange={(e) => setDraftFilters((prev) => ({ ...prev, maxKm: Number(e.target.value) }))}
+                    className="w-full bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-zinc-300 ml-1">km</span>
                 </div>
+              </div>
+            </div>
+            <div className="mt-6 flex items-center gap-4">
+              <button
+                onClick={() => doSearch(draftFilters)}
+                disabled={isLoading}
+                className={`rounded-xl px-8 py-3.5 text-sm font-semibold tracking-wide transition-all cursor-pointer shadow-sm ${
+                  isLoading
+                    ? "bg-zinc-300 text-zinc-500"
+                    : "bg-zinc-900 text-white hover:bg-zinc-800 hover:shadow-lg"
+                }`}
+              >
+                {isLoading ? "Recherche en cours..." : "Trouver les meilleures affaires"}
+              </button>
+              {hasSearched && !isLoading && (
+                <button
+                  onClick={() => setShowAdvanced((v) => !v)}
+                  className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer"
+                >
+                  {showAdvanced ? "Masquer les filtres" : "Filtres avancés"}
+                </button>
               )}
-              {dealsAboveMarket > 0 && (
-                <div className="animate-[fadeInUp_0.7s_ease-out]">
-                  <p className="text-[11px] text-zinc-400 uppercase tracking-widest font-medium">Surcotées</p>
-                  <p className="mt-1.5 text-4xl font-black text-red-500 tracking-tight">{dealsAboveMarket}</p>
+            </div>
+          </div>
+
+          {/* ─── LOADING STATE ─── */}
+          {isLoading && (
+            <div className="mt-10 text-center animate-[fadeIn_0.3s_ease-out]">
+              <div className="inline-flex items-center gap-3 rounded-2xl bg-white border border-zinc-200 px-8 py-5 shadow-lg">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:0ms]" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:150ms]" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:300ms]" />
                 </div>
-              )}
+                <p className="text-sm text-zinc-500">DEALR analyse Leboncoin et AutoScout24...</p>
+              </div>
             </div>
           )}
 
-          {!isPremium && (
-            <button onClick={handleUnlock} className="mt-10 rounded-xl bg-zinc-900 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 hover:shadow-lg cursor-pointer shadow-sm">
-              Voir l&apos;analyse complète &rarr;
-            </button>
+          {/* ─── RESULTS SUMMARY ─── */}
+          {hasSearched && !isLoading && filtered.length > 0 && (
+            <div className="mt-10 animate-[fadeInUp_0.5s_ease-out]">
+              <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-white p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-lg">&#x1F48E;</span>
+                    <div>
+                      <p className="text-lg font-bold text-zinc-900">
+                        {filtered.length <= 5 ? `${filtered.length} pépite${filtered.length > 1 ? "s" : ""} trouvée${filtered.length > 1 ? "s" : ""}` : `${filtered.length} opportunités trouvées`}
+                      </p>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        {sourceStatus.filter((s) => s.count > 0).map((s) => `${s.source} (${s.count})`).join(" · ")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-4">
+                    {best && (
+                      <div className="text-right">
+                        <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Meilleur score</p>
+                        <p className="text-2xl font-black text-emerald-600">{best.score}</p>
+                      </div>
+                    )}
+                    {totalSavings > 0 && (
+                      <div className="text-right">
+                        <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Économie max</p>
+                        <p className={`text-2xl font-black ${isPremium ? "text-emerald-600" : "text-emerald-600 blur-md select-none"}`}>
+                          {totalSavings.toLocaleString("fr-FR")} €
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── TOP PICKS ─── */}
+              <div className="mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xs font-bold uppercase tracking-widest text-emerald-600">Sélection DEALR</span>
+                  <div className="flex-1 h-px bg-emerald-200" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {topOpportunities.slice(0, 4).map((car, i) => {
+                    const saving = car.price - car.market.negotiated_price;
+                    const scoreColor = car.score >= 80 ? "text-emerald-600" : car.score >= 60 ? "text-amber-600" : "text-zinc-400";
+                    return (
+                      <div
+                        key={car.id}
+                        className={`rounded-2xl border bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer animate-[fadeInUp_0.4s_ease-out] ${
+                          i === 0 ? "border-emerald-200 ring-1 ring-emerald-100 sm:col-span-2" : "border-zinc-200"
+                        }`}
+                        style={{ animationDelay: `${i * 100}ms`, animationFillMode: "backwards" }}
+                      >
+                        <div className="flex items-start gap-4">
+                          {car.image && (
+                            <img src={car.image} alt={car.title} className="w-24 h-18 rounded-xl object-cover shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-bold text-zinc-900 truncate">{car.title}</p>
+                              <span className={`shrink-0 text-xl font-black ${scoreColor}`}>{car.score}</span>
+                            </div>
+                            <p className="mt-1 text-xs text-zinc-400">{car.km.toLocaleString("fr-FR")} km · {car.year} · {car.location}</p>
+                            <div className="mt-3 flex items-center justify-between">
+                              <span className="text-base font-bold text-zinc-900">{car.price.toLocaleString("fr-FR")} €</span>
+                              <div className="flex items-center gap-2">
+                                {saving > 0 && (
+                                  <span className={`text-sm font-bold ${isPremium ? "text-emerald-600" : "text-emerald-600 blur-sm select-none"}`}>
+                                    -{saving.toLocaleString("fr-FR")} €
+                                  </span>
+                                )}
+                                <span className="rounded-full bg-zinc-100 border border-zinc-200 px-2 py-0.5 text-[10px] font-medium text-zinc-500">{car.source}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {i === 0 && (
+                          <div className="mt-3 pt-3 border-t border-emerald-100 flex items-center gap-2">
+                            <span className="rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">Meilleure affaire</span>
+                            {car.days_online > 30 && <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold text-amber-600">Négociable</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {hasSearched && !isLoading && filtered.length === 0 && (
+            <div className="mt-10 text-center animate-[fadeIn_0.3s_ease-out]">
+              <div className="inline-flex items-center gap-3 rounded-2xl bg-white border border-zinc-200 px-8 py-5 shadow-sm">
+                <span className="text-xl">&#x1F50D;</span>
+                <p className="text-sm text-zinc-500">Aucun résultat. Essayez d&apos;élargir vos critères.</p>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* ─── TOP DEAL BANNER ─── */}
-      {hasSearched && best && (
-        <div className="border-b border-zinc-200/60 bg-emerald-50/40">
-          <div className="mx-auto max-w-4xl px-8 py-6 flex items-center justify-between gap-6 animate-[fadeIn_0.5s_ease-out]">
-            <div className="flex items-center gap-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-xl">🔥</span>
-              <div>
-                <p className="text-sm font-bold text-zinc-900">Top Deal — {best.title}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Score {best.score}/100 · {best.trim}
-                  {best.market.gap > 0 && ` · ${best.market.gap.toLocaleString("fr-FR")} € de marge`}
-                </p>
-              </div>
-            </div>
-            <div className="hidden sm:flex items-center gap-2">
-              {best.score >= 80 && <span className="rounded-full bg-emerald-100 border border-emerald-200 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-700">Top Deal</span>}
-              {best.days_online > 30 && <span className="rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-600">Marge forte</span>}
-              {best.score > 80 && best.days_online < 20 && <span className="rounded-full bg-red-50 border border-red-200 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-red-500">À saisir</span>}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── TODAY'S OPPORTUNITIES ─── */}
-      {hasSearched && topOpportunities.length > 0 && (
-        <div className="border-b border-zinc-200/60">
-          <div className="mx-auto max-w-4xl px-8 py-10">
-            <div className="flex items-center gap-2 mb-6">
-              <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Opportunités du jour</span>
-              <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-medium text-amber-600 ml-2">Live</span>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
-              {topOpportunities.map((car, i) => {
-                const saving = car.price - car.market.negotiated_price;
-                const scoreColor = car.score >= 80 ? "text-emerald-600" : car.score >= 60 ? "text-amber-600" : "text-zinc-400";
-                const mp = matchPercent(car);
-                return (
-                  <div key={car.id} className={`shrink-0 w-72 rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md animate-[fadeIn_0.4s_ease-out] ${i === 0 ? "border-emerald-200 ring-1 ring-emerald-100" : "border-zinc-200"}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-3xl font-black tracking-tight ${scoreColor}`}>{car.score}</span>
-                      <div className="flex gap-1.5">
-                        {i === 0 && <span className="rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">TOP</span>}
-                        {mp >= 80 && <span className="rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-blue-600">Match {mp}%</span>}
-                      </div>
-                    </div>
-                    <p className="mt-3 text-sm font-semibold text-zinc-900 truncate">{car.title}</p>
-                    <p className="mt-1 text-xs text-zinc-400">{car.km.toLocaleString("fr-FR")} km · {car.year} · {car.trim}</p>
-                    <div className="mt-4 flex items-baseline justify-between border-t border-zinc-100 pt-3">
-                      <span className="text-base font-bold text-zinc-900">{car.price.toLocaleString("fr-FR")} €</span>
-                      {saving > 0 && (
-                        <span className={`text-sm font-bold ${isPremium ? "text-emerald-600" : "text-emerald-600 blur-sm select-none"}`}>−{saving.toLocaleString("fr-FR")} €</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Top Deal Banner and Opportunities moved to Smart Search results above */}
 
       <div className="mx-auto max-w-4xl px-8 py-12">
-        {/* ─── FILTERS ─── */}
-        <Filters values={draftFilters} onChange={setDraftFilters} onReset={() => { setDraftFilters(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); setHasSearched(false); setSearchResults([]); setSourceStatus([]); }} />
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            onClick={() => doSearch(draftFilters)}
-            disabled={isLoading}
-            className={`rounded-xl px-6 py-3 text-sm font-semibold text-white tracking-wide transition-all cursor-pointer ${
-              isLoading ? "bg-zinc-400" : "bg-zinc-900 hover:bg-zinc-800"
-            }`}
-          >
-            {isLoading ? "Recherche en cours..." : "Rechercher"}
-          </button>
-          {hasSearched && !isLoading && JSON.stringify(draftFilters) !== JSON.stringify(filters) && (
-            <span className="text-[11px] text-amber-500 animate-[fadeIn_0.2s_ease-out]">Filtres modifiés — cliquez sur Rechercher</span>
-          )}
-        </div>
-        {hasSearched && !isLoading && sourceStatus.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {sourceStatus.map((s) => (
-              <span key={s.source} className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${
-                s.count > 0
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                  : s.error
-                    ? "border-red-200 bg-red-50 text-red-500"
-                    : "border-zinc-200 bg-zinc-50 text-zinc-400"
-              }`}>
-                {s.source}: {s.count > 0 ? `${s.count} annonces` : s.error ? "erreur" : "0 résultat"}
-              </span>
-            ))}
+        {/* ─── ADVANCED FILTERS ─── */}
+        {showAdvanced && (
+          <div className="mb-8 animate-[fadeIn_0.3s_ease-out]">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Filtres avancés</span>
+                <button onClick={() => setShowAdvanced(false)} className="text-xs text-zinc-400 hover:text-zinc-600 cursor-pointer">Masquer</button>
+              </div>
+              <Filters values={draftFilters} onChange={setDraftFilters} onReset={() => { setDraftFilters(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); setHasSearched(false); setSearchResults([]); setSourceStatus([]); setShowAdvanced(false); }} />
+              <div className="mt-4">
+                <button
+                  onClick={() => doSearch(draftFilters)}
+                  disabled={isLoading}
+                  className={`rounded-xl px-6 py-3 text-sm font-semibold text-white tracking-wide transition-all cursor-pointer ${
+                    isLoading ? "bg-zinc-400" : "bg-zinc-900 hover:bg-zinc-800"
+                  }`}
+                >
+                  {isLoading ? "Recherche en cours..." : "Appliquer les filtres"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
